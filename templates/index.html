@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票月K统计分析系统</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background: #f0f0f0;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .month-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .month-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            margin-right: 10px;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .results {
+            margin-top: 30px;
+        }
+        
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .results-table th,
+        .results-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .results-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .results-table th:hover {
+            background: #e9ecef;
+        }
+        
+        .results-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .chart-container {
+            margin-top: 30px;
+            height: 400px;
+        }
+        
+        .suggestions {
+            position: absolute;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            width: 100%;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .suggestions.active {
+            display: block;
+        }
+        
+        .suggestion-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .suggestion-item:hover {
+            background: #f8f9fa;
+        }
+        
+        .stats-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        
+        .progress-container {
+            width: 100%;
+            height: 30px;
+            background: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 股票月K统计分析系统</h1>
+            <p>统计2000年至今所有A股股票的月K涨跌幅数据</p>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('single')">单只股票查询</button>
+            <button class="tab" onclick="switchTab('batch')">批量统计</button>
+            <button class="tab" onclick="switchTab('industry')">行业分析</button>
+            <button class="tab" onclick="switchTab('config')">配置管理</button>
+            <button class="tab" onclick="switchTab('update')">数据更新</button>
+        </div>
+        
+        <!-- 单只股票查询 -->
+        <div id="single" class="tab-content active">
+            <h2>单只股票统计</h2>
+            <div class="form-group">
+                <label>股票代码/名称（支持自动补全）</label>
+                <div style="position: relative;">
+                    <input type="text" id="single-stock-code" placeholder="输入股票代码或名称" autocomplete="off">
+                    <div id="single-suggestions" class="suggestions"></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>月份筛选（可选，不选则统计所有月份）</label>
+                <div class="month-selector" id="single-month-selector">
+                    <label class="month-checkbox"><input type="checkbox" value="1"> 1月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="2"> 2月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="3"> 3月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="4"> 4月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="5"> 5月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="6"> 6月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="7"> 7月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="8"> 8月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="9"> 9月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="10"> 10月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="11"> 11月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="12"> 12月</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>最小涨跌次数</label>
+                <input type="number" id="single-min-count" value="0" min="0" title="只统计总涨跌次数（上涨+下跌）大于等于此值的股票">
+            </div>
+            <div class="form-group" id="single-statistics-mode-group" style="display: none;">
+                <label>统计方式</label>
+                <div style="display: flex; gap: 20px; align-items: center;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="radio" name="single-statistics-mode" value="summary" checked style="margin-right: 5px;">
+                        <span>汇总统计</span>
+                    </label>
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="radio" name="single-statistics-mode" value="monthly" style="margin-right: 5px;">
+                        <span>按月统计</span>
+                    </label>
+                </div>
+                <small style="color: #666; display: block; margin-top: 5px;">
+                    汇总统计：将所有选中月份合并统计 | 按月统计：分别显示各月份的统计数据
+                </small>
+            </div>
+            <button class="btn btn-primary" onclick="querySingleStock()">查询</button>
+            <div id="single-loading" class="loading">加载中...</div>
+            <div id="single-results"></div>
+        </div>
+        
+        <!-- 批量统计 -->
+        <div id="batch" class="tab-content">
+            <h2>批量统计</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>市场筛选</label>
+                    <select id="batch-market">
+                        <option value="">全部</option>
+                        <option value="sh">上海</option>
+                        <option value="sz">深圳</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>行业筛选</label>
+                    <select id="batch-industry">
+                        <option value="">全部</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>最小涨跌次数</label>
+                    <input type="number" id="batch-min-count" value="0" min="0" title="只统计总涨跌次数（上涨+下跌）大于等于此值的股票">
+                </div>
+                <div class="form-group">
+                    <label>排序方式</label>
+                    <select id="batch-order-by">
+                        <option value="up_probability">上涨概率</option>
+                        <option value="avg_up_pct">平均涨幅</option>
+                        <option value="avg_down_pct">平均跌幅</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>显示数量</label>
+                    <input type="number" id="batch-limit" value="20" min="1" max="100">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>月份筛选（可选）</label>
+                <div class="month-selector" id="batch-month-selector">
+                    <label class="month-checkbox"><input type="checkbox" value="1"> 1月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="2"> 2月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="3"> 3月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="4"> 4月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="5"> 5月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="6"> 6月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="7"> 7月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="8"> 8月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="9"> 9月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="10"> 10月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="11"> 11月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="12"> 12月</label>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="queryBatch()">查询</button>
+            <button class="btn btn-success" onclick="exportExcel()">导出Excel</button>
+            <button class="btn btn-success" onclick="exportCSV()">导出CSV</button>
+            <div id="batch-loading" class="loading">加载中...</div>
+            <div id="batch-results"></div>
+        </div>
+        
+        <!-- 行业分析 -->
+        <div id="industry" class="tab-content">
+            <h2>行业分析</h2>
+            <div class="form-group">
+                <label>选择行业</label>
+                <select id="industry-select">
+                    <option value="">请选择行业</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>最小涨跌次数</label>
+                <input type="number" id="industry-min-count" value="0" min="0" title="只统计总涨跌次数（上涨+下跌）大于等于此值的股票">
+            </div>
+            <div class="form-group">
+                <label>月份筛选（可选）</label>
+                <div class="month-selector" id="industry-month-selector">
+                    <label class="month-checkbox"><input type="checkbox" value="1"> 1月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="2"> 2月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="3"> 3月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="4"> 4月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="5"> 5月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="6"> 6月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="7"> 7月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="8"> 8月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="9"> 9月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="10"> 10月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="11"> 11月</label>
+                    <label class="month-checkbox"><input type="checkbox" value="12"> 12月</label>
+                </div>
+            </div>
+            <div class="form-group" id="industry-statistics-mode-group" style="display: none;">
+                <label>统计方式</label>
+                <div>
+                    <label style="margin-right: 20px;">
+                        <input type="radio" name="industry-statistics-mode" value="monthly" checked> 按月统计
+                    </label>
+                    <label>
+                        <input type="radio" name="industry-statistics-mode" value="summary"> 汇总统计
+                    </label>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="queryIndustry()">查询</button>
+            <div id="industry-loading" class="loading">加载中...</div>
+            <div id="industry-results"></div>
+            
+            <hr style="margin: 30px 0;">
+            <h3>按月份排名查询</h3>
+            <p style="color: #666; margin-bottom: 20px;">查询指定月份所有行业的上涨概率排名</p>
+            <div class="form-group">
+                <label>选择月份</label>
+                <select id="rank-month-select">
+                    <option value="1">1月</option>
+                    <option value="2">2月</option>
+                    <option value="3">3月</option>
+                    <option value="4">4月</option>
+                    <option value="5">5月</option>
+                    <option value="6">6月</option>
+                    <option value="7">7月</option>
+                    <option value="8">8月</option>
+                    <option value="9">9月</option>
+                    <option value="10">10月</option>
+                    <option value="11">11月</option>
+                    <option value="12">12月</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>最小涨跌次数</label>
+                <input type="number" id="rank-min-count" value="0" min="0" title="只统计总涨跌次数（上涨+下跌）大于等于此值的行业">
+            </div>
+            <div class="form-group">
+                <label>显示数量</label>
+                <input type="number" id="rank-limit" value="20" min="1" max="100">
+            </div>
+            <button class="btn btn-primary" onclick="queryIndustryRank()">查询排名</button>
+            <div id="industry-rank-loading" class="loading">加载中...</div>
+            <div id="industry-rank-results"></div>
+        </div>
+        
+        <!-- 配置管理 -->
+        <div id="config" class="tab-content">
+            <h2>数据源配置</h2>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="config-baostock" checked> 启用BaoStock（优先）
+                </label>
+                <div id="test-baostock-result" style="margin-left: 25px; margin-top: 5px; font-size: 12px;"></div>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="config-tushare"> 启用tushare（备用）
+                </label>
+                <input type="password" id="config-tushare-token" placeholder="tushare token（已配置的密钥会显示为掩码）" style="margin-top: 10px; width: 300px;">
+                <div id="test-tushare-result" style="margin-left: 25px; margin-top: 5px; font-size: 12px;"></div>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="config-finnhub"> 启用FinnHub（备用，主要支持美股）
+                </label>
+                <input type="password" id="config-finnhub-key" placeholder="FinnHub API Key（已配置的密钥会显示为掩码）" style="margin-top: 10px; width: 300px;">
+                <div id="test-finnhub-result" style="margin-left: 25px; margin-top: 5px; font-size: 12px;"></div>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="config-akshare"> 启用AKShare（推荐，免费，支持A股行业信息）
+                </label>
+                <div id="test-akshare-result" style="margin-left: 25px; margin-top: 5px; font-size: 12px;"></div>
+                <small style="display: block; margin-left: 25px; margin-top: 5px; color: #666;">
+                    AKShare免费且稳定，提供A股行业分类信息，推荐用于行业分析
+                </small>
+            </div>
+            <div style="margin-top: 20px;">
+                <button class="btn btn-primary" onclick="saveConfig()">保存配置</button>
+                <button class="btn btn-success" onclick="testConnections()" style="margin-left: 10px;">测试连接</button>
+            </div>
+            <div id="config-message" style="margin-top: 15px;"></div>
+        </div>
+        
+        <!-- 数据更新 -->
+        <div id="update" class="tab-content">
+            <h2>数据更新</h2>
+            <div class="form-group">
+                <label>更新股票列表</label>
+                <button class="btn btn-primary" id="update-stock-list-btn" onclick="updateStockList()">更新股票列表</button>
+            </div>
+            <div class="form-group">
+                <label>更新月K数据</label>
+                <button class="btn btn-primary" id="update-monthly-btn" onclick="updateMonthlyData()">更新所有股票月K数据</button>
+                <label style="margin-left: 20px;">
+                    <input type="checkbox" id="force-update"> 强制全量更新
+                </label>
+            </div>
+            <div id="update-message"></div>
+        </div>
+    </div>
+    
+    <script src="/static/app.js"></script>
+</body>
+</html>
+
+
